@@ -8,23 +8,23 @@ Bivariate plots
 
 ### Vit D vs. Edad
 
-<img src="02_vitd_analysis_files/figure-markdown_github/edad-1.png" style="display: block; margin: auto;" />
+<img src="02_1_vitd_analysis_files/figure-markdown_github/edad-1.png" style="display: block; margin: auto;" />
 
 ### Vit D vs. Entidad
 
-<img src="02_vitd_analysis_files/figure-markdown_github/entidad-1.png" style="display: block; margin: auto;" />
+<img src="02_1_vitd_analysis_files/figure-markdown_github/entidad-1.png" style="display: block; margin: auto;" />
 
 ### Vit D vs. Latitude
 
-<img src="02_vitd_analysis_files/figure-markdown_github/latitude-1.png" style="display: block; margin: auto;" />
+<img src="02_1_vitd_analysis_files/figure-markdown_github/latitude-1.png" style="display: block; margin: auto;" />
 
 ### Vit D vs. Altitude
 
-<img src="02_vitd_analysis_files/figure-markdown_github/altitude-1.png" style="display: block; margin: auto;" />
+<img src="02_1_vitd_analysis_files/figure-markdown_github/altitude-1.png" style="display: block; margin: auto;" />
 
 ### Vit D vs. Ethnicity
 
-<img src="02_vitd_analysis_files/figure-markdown_github/ethnicity-1.png" style="display: block; margin: auto;" />
+<img src="02_1_vitd_analysis_files/figure-markdown_github/ethnicity-1.png" style="display: block; margin: auto;" />
 
 Multivariate regression
 =======================
