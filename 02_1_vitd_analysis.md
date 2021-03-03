@@ -1,7 +1,7 @@
 Vitamin D Analysis
 ================
 Carlos Dobler
-Last update: February 23 2021 (18:43)
+Last update: March 02 2021 (19:30)
 
 Pre-processesing
 ================
@@ -75,3 +75,8 @@ As expected, ethnicity and latitude are highly correlated, so I only use one of 
     ## F-statistic: 19.55 on 3 and 707 DF,  p-value: 3.495e-12
 
 The model shows a significant but very little capacity to predict Vit D levels using age, altitude, and latitude (these variables explain ~0.005% of the variance in Vit D). However, the effect of all variables is significant. When controlling for the rest of the variables, edad and altitud have a negative relation with Vit D levels, while latitude has a positive relation with Vit D levels.
+
+Death rate analysis
+===================
+
+<img src="02_1_vitd_analysis_files/figure-markdown_github/death_rate-1.png" style="display: block; margin: auto;" />
