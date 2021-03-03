@@ -1,7 +1,7 @@
 Vitamin D Analysis
 ================
 Carlos Dobler
-Last update: March 02 2021 (19:30)
+Last update: March 03 2021 (10:06)
 
 Pre-processesing
 ================
@@ -79,4 +79,4 @@ The model shows a significant but very little capacity to predict Vit D levels u
 Death rate analysis
 ===================
 
-<img src="02_1_vitd_analysis_files/figure-markdown_github/death_rate-1.png" style="display: block; margin: auto;" />
+<img src="02_1_vitd_analysis_files/figure-markdown_github/death_rate-1.png" style="display: block; margin: auto;" /><img src="02_1_vitd_analysis_files/figure-markdown_github/death_rate-2.png" style="display: block; margin: auto;" /><img src="02_1_vitd_analysis_files/figure-markdown_github/death_rate-3.png" style="display: block; margin: auto;" />
