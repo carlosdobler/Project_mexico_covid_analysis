@@ -1,0 +1,145 @@
+---
+title: "Vitamin D Analysis 2"
+author: "Carlos Dobler"
+date: "`r paste('Last update:', format(Sys.time(), '%B %d %Y (%H:%M)'))`"
+output: html_document
+editor_options: 
+  chunk_output_type: console
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = FALSE,
+                      message = FALSE,
+                      warning = FALSE,
+                      fig.align = 'center')
+```
+
+
+```{r prep, include=FALSE}
+
+library(tidyverse)
+# library(readxl)
+
+# Load files
+read_csv("data/vitd_data/Yan database women 2012 2018 over10.csv",
+         col_types = "iiidddddddii") %>% 
+  
+  rowwise() %>% 
+  mutate(Diab = case_when(all(is.na(c_across(Prediab:Diabet2))) ~ NA_integer_,
+                          sum(c_across(Prediab:Diabet2)) == 0 ~ 0L,
+                          TRUE ~ 1L
+                     )) %>% 
+  ungroup() %>% 
+  select(-c(Prediab:Diabet2, Year)) -> db_vitd
+
+```
+
+
+## Pair-wise correlations
+
+### Age
+```{r, fig.width = 10, fig.asp = 0.2}
+
+func_pw <- function(v){
+  
+  db_vitd %>% 
+    pivot_longer(cols = -c(State, Municip, {{v}}),
+                 names_to = "vars",
+                 values_to = "val") -> d
+  
+  # d %>%
+  #   rename(vv = {{v}}) %>% 
+  #   nest(data = (-vars)) %>%
+  #   mutate(test = map(data, ~ cor.test(.x$vv, .x$val)),
+  #          test = map(test, broom::tidy)) %>%
+  #   unnest(cols = test) %>%
+  #   select(vars, estimate, p.value) -> d_s
+  
+  d %>%
+    rename(vv = {{v}}) %>% 
+    filter(!is.na(vv) & !is.na(val)) %>% 
+    group_by(vars) %>% 
+    summarize(
+      estimate = cor.test(vv, val, use = "complete.obs")$estimate %>% round(2),
+      p.value = cor.test(vv, val, use = "complete.obs")$p.value %>% round(2)
+    ) -> d_s
+  
+  ggplot(d, aes(x = {{v}}, y = val)) +
+    geom_point(alpha = 0.5) +
+    geom_smooth(method = "lm", se = F, color = "red") +
+    facet_wrap(~vars, nrow = 1, scales = "free_y") +
+    geom_label(data = d_s, aes(x = -Inf, y = Inf, label = str_c("r = ", round(estimate, 2), "\np = ", round(p.value, 2))),
+               hjust = -0.1, vjust = 1.2, alpha = 0.7) +
+    theme(axis.title.y = element_blank())
+  
+}
+
+func_pw(Age)
+
+```
+
+### Altitud
+```{r, fig.width = 10, fig.asp = 0.2}
+func_pw(Altitud)
+```
+
+### BMI
+```{r, fig.width = 10, fig.asp = 0.2}
+func_pw(BMI)
+```
+
+### Diabetes
+```{r, fig.width = 10, fig.asp = 0.2}
+func_pw(Diab)
+```
+
+### Hypertension
+```{r, fig.width = 10, fig.asp = 0.2}
+func_pw(Hypert)
+```
+
+### Sugar
+```{r, fig.width = 10, fig.asp = 0.2}
+func_pw(Sugar)
+```
+
+### Vitamin D
+```{r, fig.width = 10, fig.asp = 0.2}
+func_pw(vitD)
+```
+
+
+## Multiple regression
+Response variable = vit D  
+Explanatory variables = age, bmi, hypert, & diab
+```{r, include=FALSE}
+
+db_vitd %>% 
+  map_df(~sum(is.na(.x)))
+
+db_vitd %>%
+  select(-c(Sugar, Altitud)) %>% 
+  rowwise() %>% 
+  mutate(na = case_when(any(is.na(c_across(everything()))) ~ 0,
+                        TRUE ~ 1)) %>% 
+  ungroup() %>% 
+  filter(na == 1) %>% 
+  select(-c(State, Municip, na)) -> d
+
+d[,-1] %>% 
+  corrr::correlate() %>% 
+  corrr::shave()
+  
+
+
+
+```
+
+```{r}
+
+lm(vitD ~ Age + BMI + Hypert + Diab, data = d) %>% summary()
+
+```
+The explanatory variables, together, explain a negligible amount of the variance in Vit D (see R-squared). When controlling for the other variables, both age and BMI have a negative and signficiant relation with Vit D (see column "Pr(>|t|)").
+
+
