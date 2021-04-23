@@ -18,7 +18,7 @@ knitr::opts_chunk$set(echo = FALSE,
 ```{r prep, include=FALSE}
 
 library(tidyverse)
-# library(readxl)
+library(readxl)
 
 # Load files
 read_csv("data/vitd_data/Yan database women 2012 2018 over10.csv",
@@ -32,17 +32,20 @@ read_csv("data/vitd_data/Yan database women 2012 2018 over10.csv",
   ungroup() %>% 
   select(-c(Prediab:Diabet2, Year)) -> db_vitd
 
+
 ```
 
 
-## Pair-wise correlations
+## Case-scale analysis
 
-### Age
+### Pair-wise correlations
+
+#### Age
 ```{r, fig.width = 10, fig.asp = 0.2}
 
-func_pw <- function(v){
+func_pw <- function(df, v){
   
-  db_vitd %>% 
+  df %>% 
     pivot_longer(cols = -c(State, Municip, {{v}}),
                  names_to = "vars",
                  values_to = "val") -> d
@@ -74,48 +77,48 @@ func_pw <- function(v){
   
 }
 
-func_pw(Age)
+func_pw(db_vitd, Age)
 
 ```
 
-### Altitud
+#### Altitud
 ```{r, fig.width = 10, fig.asp = 0.2}
-func_pw(Altitud)
+func_pw(db_vitd, Altitud)
 ```
 
-### BMI
+#### BMI
 ```{r, fig.width = 10, fig.asp = 0.2}
-func_pw(BMI)
+func_pw(db_vitd, BMI)
 ```
 
-### Diabetes
+#### Diabetes
 ```{r, fig.width = 10, fig.asp = 0.2}
-func_pw(Diab)
+func_pw(db_vitd, Diab)
 ```
 
-### Hypertension
+#### Hypertension
 ```{r, fig.width = 10, fig.asp = 0.2}
-func_pw(Hypert)
+func_pw(db_vitd, Hypert)
 ```
 
-### Sugar
+#### Sugar
 ```{r, fig.width = 10, fig.asp = 0.2}
-func_pw(Sugar)
+func_pw(db_vitd, Sugar)
 ```
 
-### Vitamin D
+#### Vitamin D
 ```{r, fig.width = 10, fig.asp = 0.2}
-func_pw(vitD)
+func_pw(db_vitd, vitD)
 ```
 
 
-## Multiple regression
+### Multiple regression
 Response variable = vit D  
 Explanatory variables = age, bmi, hypert, & diab
 ```{r, include=FALSE}
 
 db_vitd %>% 
-  map_df(~sum(is.na(.x)))
+  map_df(~sum(is.na(.x))) # count missing obs per var
 
 db_vitd %>%
   select(-c(Sugar, Altitud)) %>% 
@@ -124,14 +127,16 @@ db_vitd %>%
                         TRUE ~ 1)) %>% 
   ungroup() %>% 
   filter(na == 1) %>% 
-  select(-c(State, Municip, na)) -> d
+  select(-c(State, Municip, na)) %>% # remove: highest num of missing obs
+  
+  mutate(Hypert = factor(Hypert),
+         Diab = factor(Diab)) -> d
 
 d[,-1] %>% 
+  mutate(across(everything(), ~as.numeric(.x))) %>% 
   corrr::correlate() %>% 
   corrr::shave()
   
-
-
 
 ```
 
@@ -142,4 +147,83 @@ lm(vitD ~ Age + BMI + Hypert + Diab, data = d) %>% summary()
 ```
 The explanatory variables, together, explain a negligible amount of the variance in Vit D (see R-squared). When controlling for the other variables, both age and BMI have a negative and signficiant relation with Vit D (see column "Pr(>|t|)").
 
+
+## Municipal-scale analysis
+```{r, include = FALSE}
+
+read_excel("data/vitd_data/Municipal database 20 to 49_MS&YG version2.xlsx",
+           skip = 1,
+           col_names = c("State", "Municip", "State_name", "Mun_name", "Deaths", 
+                         "Pop", "Deaths_ht", "Alt", "Lat", "Ethnicity", "x")) %>% 
+  select(-x) -> df_mun
+
+db_vitd %>% 
+  group_by(State, Municip) %>% 
+  summarize(
+    sample_size = n(),
+    mean_vitD = mean(vitD),
+    nmol_30 = sum(vitD < 30)/n(),
+    nmol_50 = sum(vitD < 50)/n(),
+    nmol_75 = sum(vitD < 75)/n()
+  ) %>% 
+  
+  {right_join(df_mun, ., by = c("State", "Municip"))} -> df_mun
+
+```
+
+### Pair-wise correlations
+
+#### Deaths per 100,000
+```{r, fig.width = 10, fig.asp = 0.2}
+func_pw(df_mun[,-c(3:6,11)], Deaths_ht)
+```
+
+#### Altitude
+```{r, fig.width = 10, fig.asp = 0.2}
+func_pw(df_mun[,-c(3:6,11)], Alt)
+```
+
+#### Latitude
+```{r, fig.width = 10, fig.asp = 0.2}
+func_pw(df_mun[,-c(3:6,11)], Lat)
+```
+
+#### Ethnicity
+```{r, fig.width = 10, fig.asp = 0.2}
+func_pw(df_mun[,-c(3:6,11)], Ethnicity)
+```
+
+#### Mean Vit D
+```{r, fig.width = 10, fig.asp = 0.2}
+func_pw(df_mun[,-c(3:6,11)], mean_vitD)
+```
+
+#### nmol < 30
+```{r, fig.width = 10, fig.asp = 0.2}
+func_pw(df_mun[,-c(3:6,11)], nmol_30)
+```
+
+#### nmol < 50
+```{r, fig.width = 10, fig.asp = 0.2}
+func_pw(df_mun[,-c(3:6,11)], nmol_50)
+```
+
+#### nmol < 75
+```{r, fig.width = 10, fig.asp = 0.2}
+func_pw(df_mun[,-c(3:6,11)], nmol_75)
+```
+
+## Multivariate regression
+Response variable = mean Vit D  
+Explanatory variables = Deaths per 100,000, Altitude, Latitude, & Ethnicity
+```{r}
+
+# df_mun[,7:10] %>% 
+#   corrr::correlate() %>% 
+#   corrr::shave()
+
+lm(mean_vitD ~ Deaths_ht + Alt + Lat + Ethnicity, data = df_mun) %>% summary()
+
+```
+Explanatory variables, together, explain 30% of the variance in Vit D at municipal scale. When controlling for other variables, each variable shows a negative relation with vit D, but only deaths per 100,000, altitude, and latitude are significant. If ethnicity is removed from the model, results are almost the same in terms of coefficients, their signs, and R2.
 
