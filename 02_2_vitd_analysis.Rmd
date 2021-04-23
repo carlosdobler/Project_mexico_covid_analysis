@@ -213,7 +213,7 @@ func_pw(df_mun[,-c(3:6,11)], nmol_50)
 func_pw(df_mun[,-c(3:6,11)], nmol_75)
 ```
 
-## Multivariate regression
+## Multivariate regression 1
 Response variable = mean Vit D  
 Explanatory variables = Deaths per 100,000, Altitude, Latitude, & Ethnicity
 ```{r}
@@ -227,3 +227,12 @@ lm(mean_vitD ~ Deaths_ht + Alt + Lat + Ethnicity, data = df_mun) %>% summary()
 ```
 Explanatory variables, together, explain 30% of the variance in Vit D at municipal scale. When controlling for other variables, each variable shows a negative relation with vit D, but only deaths per 100,000, altitude, and latitude are significant. If ethnicity is removed from the model, results are almost the same in terms of coefficients, their signs, and R2.
 
+## Multivariate regression 2
+Response variable = Deaths per 100,000  
+Explanatory variables = mean Vit D, Altitude, Latitude, & Ethnicity
+```{r}
+
+lm(Deaths_ht ~ mean_vitD + Alt + Lat + Ethnicity, data = df_mun) %>% summary()
+
+```
+Explanatory variables, together, explain around 4% of the variance in Deaths at municipal scale. When controlling for other variables, vit D shows a negative and significant relation with vit D, while latitude shows a positive significant one. Altitude and ethnicity do not seem significant.
