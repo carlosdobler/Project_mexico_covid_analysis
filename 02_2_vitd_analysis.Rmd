@@ -19,19 +19,22 @@ knitr::opts_chunk$set(echo = FALSE,
 
 library(tidyverse)
 library(readxl)
+library(patchwork)
 
 # Load files
-read_csv("data/vitd_data/Yan database women 2012 2018 over10 with latitude.csv",
-         col_types = "iiiiiddddddii") %>% 
+read_csv("data/vitd_data/Yan database women 2012 2018 over10 with lat and alt.csv") %>% 
   
   rowwise() %>% 
-  mutate(Diab = case_when(all(is.na(c_across(Prediab:Diabet2))) ~ NA_integer_,
-                          sum(c_across(Prediab:Diabet2)) == 0 ~ 0L,
-                          TRUE ~ 1L
+  mutate(Diab = case_when(all(is.na(c_across(Prediab:Diabet2))) ~ NA,
+                          sum(c_across(Prediab:Diabet2)) == 0 ~ F,
+                          TRUE ~ T
                      )) %>% 
   ungroup() %>% 
   select(-c(Prediab:Diabet2, Year)) %>% 
-  rename(Lat = 1) -> df_vitd
+  
+  mutate(Hypert = as.logical(Hypert)) %>%
+  
+  rename(Lat_zone = 1) -> df_vitd
 
 # Remove outlier
 df_vitd %>% filter(Age >= 20) -> df_vitd
@@ -43,11 +46,14 @@ df_vitd %>% filter(Age >= 20) -> df_vitd
 ```
 
 
-## Case-scale analysis
+## Individual-scale analysis
 
 ### Pair-wise correlations
+Between continuous variables: Pearson  
+Between a binary and a continuous variable: Mann-Whitney  
+Between binary variables: Chi-square  
 
-#### Latitud
+#### Latitude
 ```{r, fig.width = 10, fig.asp = 0.2}
 
 func_pw <- function(df, v){
@@ -56,6 +62,8 @@ func_pw <- function(df, v){
     pivot_longer(cols = -c(State, Municip, {{v}}),
                  names_to = "vars",
                  values_to = "val") -> d
+  
+  
   
   # d %>%
   #   rename(vv = {{v}}) %>% 
@@ -84,45 +92,132 @@ func_pw <- function(df, v){
   
 }
 
-func_pw(df_vitd, Lat)
+
+func_pw2 <- function(df, v){
+  
+  df %>% 
+    select(-c(all_of(v))) %>% 
+    names() %>% 
+    # .[7] %>% # DEL
+    map(function(c){
+      
+      # Both numeric = pearson
+      if(is.numeric(df %>% pull(v)) & is.numeric(df %>% pull(c))){
+        
+        t <- cor.test(df %>% pull(v), df %>% pull(c))
+        
+        d_s <- tibble(estimate = t$estimate %>% round(2),
+                      p.value = t$p.value %>% round(2))
+        
+        ggplot(df, aes(x = .data[[v]], y = .data[[c]])) +
+          geom_point(alpha = 0.5) +
+          geom_smooth(method = "lm", se = F, color = "red") +
+          # geom_label(data = d_s, aes(x = -Inf, y = Inf, label = str_c("r = ", round(estimate, 2), "\np = ", round(p.value, 2))),
+          #      hjust = -0.1, vjust = 1.2, alpha = 0.7)
+          labs(caption = str_c("r = ", d_s$estimate, "; p = ", d_s$p.value),
+               subtitle = c) +
+          theme(axis.title = element_blank())
+          
+      # Numeric + logical = wilcoxon (mann-whitney)
+      } else if(is.numeric(df %>% pull(v)) & is.logical(df %>% pull(c))){
+        
+        t <- wilcox.test(df %>% pull(v) ~ df %>% pull(c))
+        
+        d_s <- t$p.value %>% round(2)
+        
+        df %>% 
+          filter(!is.na(.data[[v]]), !is.na(.data[[c]])) %>%
+          ggplot(aes(x = .data[[v]], y = .data[[c]])) +
+          geom_boxplot() +
+          # geom_label(aes(x = -Inf, y = Inf, label = str_c("p = ", round(d_s, 2))),
+          #      hjust = -0.1, vjust = 1.2, alpha = 0.7)
+          labs(caption = str_c("p = ", d_s),
+               subtitle = c) +
+          theme(axis.title = element_blank())
+        
+        
+      # Logical + logical = chi sq
+      } else if(is.logical(df %>% pull(v)) & is.logical(df %>% pull(c))){
+        
+        t <- chisq.test(df %>% pull(v), df %>% pull(c))
+        
+        d_s <- t$p.value %>% round(2)
+        
+        df %>% 
+          filter(!is.na(.data[[v]]), !is.na(.data[[c]])) %>% 
+          count(.data[[v]], .data[[c]]) %>% 
+          ggplot(aes(.data[[v]], .data[[c]])) +
+          geom_tile(aes(fill = n), show.legend = F) + 
+          geom_label(aes(label = n)) +
+          labs(caption = str_c("p = ", d_s),
+               subtitle = c) +
+          theme(axis.title = element_blank())
+        
+      # Logical + numeric
+      } else if(is.logical(df %>% pull(v)) & is.numeric(df %>% pull(c))){
+        
+        t <- wilcox.test(df %>% pull(c) ~ df %>% pull(v))
+        
+        d_s <- t$p.value %>% round(2)
+        
+        df %>% 
+          filter(!is.na(.data[[v]]), !is.na(.data[[c]])) %>%
+          ggplot(aes(x = .data[[v]], y = .data[[c]])) +
+          geom_boxplot() +
+          # geom_label(aes(x = -Inf, y = Inf, label = str_c("p = ", round(d_s, 2))),
+          #      hjust = -0.1, vjust = 1.2, alpha = 0.7)
+          labs(caption = str_c("p = ", d_s),
+               subtitle = c) +
+          theme(axis.title = element_blank())
+        
+      }
+      
+    }) %>% 
+    
+    wrap_plots(nrow = 1)
+    
+}
+
+func_pw2(df_vitd[,-(2:3)], "Lat_zone")
+#func_pw(df_vitd, Lat_zone)
 
 ```
 
 
 #### Age
 ```{r, fig.width = 10, fig.asp = 0.2}
-func_pw(df_vitd, Age)
+func_pw2(df_vitd[,-(2:3)], "Age")
 ```
 
 
 #### Altitud
 ```{r, fig.width = 10, fig.asp = 0.2}
-func_pw(df_vitd, Altitud)
+func_pw2(df_vitd[,-(2:3)], "Altitude")
 ```
 
 #### BMI
 ```{r, fig.width = 10, fig.asp = 0.2}
-func_pw(df_vitd, BMI)
+func_pw2(df_vitd[,-(2:3)], "BMI")
 ```
 
 #### Diabetes
 ```{r, fig.width = 10, fig.asp = 0.2}
-func_pw(df_vitd, Diab)
+func_pw2(df_vitd[,-(2:3)], "Diab")
 ```
 
 #### Hypertension
 ```{r, fig.width = 10, fig.asp = 0.2}
-func_pw(df_vitd, Hypert)
+func_pw2(df_vitd[,-(2:3)], "Hypert")
 ```
 
 #### Sugar
 ```{r, fig.width = 10, fig.asp = 0.2}
-func_pw(df_vitd, Sugar)
+func_pw2(df_vitd[,-(2:3)], "Sugar")
 ```
 
 #### Vitamin D
 ```{r, fig.width = 10, fig.asp = 0.2}
-func_pw(df_vitd, vitD)
+func_pw2(df_vitd[,-(2:3)], "vitD")
 ```
 
 
@@ -131,35 +226,32 @@ Response variable = vit D
 Explanatory variables = bmi, lat, alt
 ```{r, include=FALSE}
 
-# df_vitd %>% 
-#   map_df(~sum(!is.na(.x))) # count missing obs per var
+# df_vitd %>%
+#   map_df(~sum(is.na(.x))) # count missing obs per var
 # 
 # df_vitd %>%
-#   select(BMI, Lat, Altitud) %>%
-#   rowwise() %>% 
+#   select(BMI, Lat_zone, Altitude) %>%
+#   rowwise() %>%
 #   mutate(na = case_when(any(is.na(c_across(everything()))) ~ 0,
-#                         TRUE ~ 1)) %>% 
-#   ungroup() %>% 
-#   filter(na == 1) %>% 
-#   select(-c(State, Municip, na)) %>% # remove: highest num of missing obs
-#   
-#   mutate(Hypert = factor(Hypert),
-#          Diab = factor(Diab)) -> d
+#                         TRUE ~ 1)) %>%
+#   ungroup() %>%
+#   filter(na == 1) %>%
+#   select(-na)
 # 
-# d[,-1] %>% 
-#   mutate(across(everything(), ~as.numeric(.x))) %>% 
-#   corrr::correlate() %>% 
+# d[,-1] %>%
+#   mutate(across(everything(), ~as.numeric(.x))) %>%
+#   corrr::correlate() %>%
 #   corrr::shave()
-  
+
 
 ```
 
-```{r, include=F}
+```{r}
 
-#lm(vitD ~ BMI + , data = d) %>% summary()
+lm(vitD ~ BMI + Lat_zone + Altitude, data = df_vitd) %>% summary()
 
 ```
-Impossible: not enough observations.
+
 
 
 ## Municipal-scale analysis
@@ -189,42 +281,42 @@ df_vitd %>%
 
 #### Deaths per 100,000
 ```{r, fig.width = 10, fig.asp = 0.2}
-func_pw(df_mun[,-c(3:6,11)], Deaths_ht)
+func_pw2(df_mun[,-c(1:6,11)], "Deaths_ht")
 ```
 
 #### Altitude
 ```{r, fig.width = 10, fig.asp = 0.2}
-func_pw(df_mun[,-c(3:6,11)], Alt)
+func_pw2(df_mun[,-c(1:6,11)], "Alt")
 ```
 
 #### Latitude
 ```{r, fig.width = 10, fig.asp = 0.2}
-func_pw(df_mun[,-c(3:6,11)], Lat)
+func_pw2(df_mun[,-c(1:6,11)], "Lat")
 ```
 
 #### Ethnicity
 ```{r, fig.width = 10, fig.asp = 0.2}
-func_pw(df_mun[,-c(3:6,11)], Ethnicity)
+func_pw2(df_mun[,-c(1:6,11)], "Ethnicity")
 ```
 
 #### Mean Vit D
 ```{r, fig.width = 10, fig.asp = 0.2}
-func_pw(df_mun[,-c(3:6,11)], mean_vitD)
+func_pw2(df_mun[,-c(1:6,11)], "mean_vitD")
 ```
 
 #### nmol < 30
 ```{r, fig.width = 10, fig.asp = 0.2}
-func_pw(df_mun[,-c(3:6,11)], nmol_30)
+func_pw2(df_mun[,-c(1:6,11)], "nmol_30")
 ```
 
 #### nmol < 50
 ```{r, fig.width = 10, fig.asp = 0.2}
-func_pw(df_mun[,-c(3:6,11)], nmol_50)
+func_pw2(df_mun[,-c(1:6,11)], "nmol_50")
 ```
 
 #### nmol < 75
 ```{r, fig.width = 10, fig.asp = 0.2}
-func_pw(df_mun[,-c(3:6,11)], nmol_75)
+func_pw2(df_mun[,-c(1:6,11)], "nmol_75")
 ```
 
 ## Multivariate regression 1
