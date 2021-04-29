@@ -221,7 +221,7 @@ func_pw2(df_vitd[,-(2:3)], "vitD")
 ```
 
 
-### Multiple regression
+### Multiple regression 1
 Response variable = vit D  
 Explanatory variables = bmi, lat, alt
 ```{r, include=FALSE}
@@ -251,6 +251,16 @@ Explanatory variables = bmi, lat, alt
 lm(vitD ~ BMI + Lat_zone + Altitude, data = df_vitd) %>% summary()
 
 ```
+
+### Multiple regression 2
+Response variable = vit D  
+Explanatory variables = lat, alt
+```{r}
+
+lm(vitD ~ Lat_zone + Altitude, data = df_vitd) %>% summary()
+
+```
+
 
 
 
