@@ -22,6 +22,14 @@ library(readxl)
 library(patchwork)
 
 # Load files
+read_excel("data/vitd_data/state muncip alt and lat.xlsx") %>% 
+  slice(-1) %>% 
+  rename(State = 1,
+         Municip = 2,
+         Altitude2 = 3,
+         Lat = 4) -> df_latalt
+  
+# Main data: younger women
 read_csv("data/vitd_data/Yan database women 2012 2018 over10 with lat and alt.csv") %>% 
   
   rowwise() %>% 
@@ -38,6 +46,38 @@ read_csv("data/vitd_data/Yan database women 2012 2018 over10 with lat and alt.cs
 
 # Remove outlier
 df_vitd %>% filter(Age >= 20) -> df_vitd
+
+df_vitd %>% 
+  left_join(df_latalt, by = c("State", "Municip")) -> df_vitd
+
+# older women
+read_excel("data/vitd_data/Women over 60.xlsx") %>%
+  filter(SEXO == 2,
+         EDAD >= 60) %>% 
+  select(-c(1,3,9,10)) %>%
+  rename(Age = 1,
+         State = 2,
+         Municip = 3,
+         Lat_zone = 4,
+         Altitude = 5,
+         vitD = 6) %>%
+
+  group_by(State, Municip) %>%
+  mutate(n = n()) %>%
+  filter(n >= 10) %>%
+  ungroup() %>%
+  select(-n) -> df_60
+
+df_60 %>% 
+  left_join(df_latalt, by = c("State", "Municip")) -> df_60
+
+df_60 %>% 
+  mutate(BMI = NA,
+         Hypert = NA,
+         Sugar = NA,
+         Diab = NA) %>% 
+  select(names(df_vitd)) %>% 
+  bind_rows(df_vitd) -> df_vitd_60
 
 # Is altitude correlated with latitude
 # cor.test(df_vitd$Lat, df_vitd$Altitud)
@@ -56,41 +96,39 @@ Between binary variables: Chi-square
 #### Latitude
 ```{r, fig.width = 10, fig.asp = 0.2}
 
-func_pw <- function(df, v){
-  
-  df %>% 
-    pivot_longer(cols = -c(State, Municip, {{v}}),
-                 names_to = "vars",
-                 values_to = "val") -> d
-  
-  
-  
-  # d %>%
-  #   rename(vv = {{v}}) %>% 
-  #   nest(data = (-vars)) %>%
-  #   mutate(test = map(data, ~ cor.test(.x$vv, .x$val)),
-  #          test = map(test, broom::tidy)) %>%
-  #   unnest(cols = test) %>%
-  #   select(vars, estimate, p.value) -> d_s
-  
-  d %>%
-    rename(vv = {{v}}) %>% 
-    filter(!is.na(vv) & !is.na(val)) %>% 
-    group_by(vars) %>% 
-    summarize(
-      estimate = cor.test(vv, val, use = "complete.obs")$estimate %>% round(2),
-      p.value = cor.test(vv, val, use = "complete.obs")$p.value %>% round(2)
-    ) -> d_s
-  
-  ggplot(d, aes(x = {{v}}, y = val)) +
-    geom_point(alpha = 0.5) +
-    geom_smooth(method = "lm", se = F, color = "red") +
-    facet_wrap(~vars, nrow = 1, scales = "free_y") +
-    geom_label(data = d_s, aes(x = -Inf, y = Inf, label = str_c("r = ", round(estimate, 2), "\np = ", round(p.value, 2))),
-               hjust = -0.1, vjust = 1.2, alpha = 0.7) +
-    theme(axis.title.y = element_blank())
-  
-}
+# func_pw <- function(df, v){
+#   
+#   df %>% 
+#     pivot_longer(cols = -c(State, Municip, {{v}}),
+#                  names_to = "vars",
+#                  values_to = "val") -> d
+#   
+#   d %>%
+#     rename(vv = {{v}}) %>%
+#     nest(data = (-vars)) %>%
+#     mutate(test = map(data, ~ cor.test(.x$vv, .x$val)),
+#            test = map(test, broom::tidy)) %>%
+#     unnest(cols = test) %>%
+#     select(vars, estimate, p.value) -> d_s
+#   
+#   d %>%
+#     rename(vv = {{v}}) %>% 
+#     filter(!is.na(vv) & !is.na(val)) %>% 
+#     group_by(vars) %>% 
+#     summarize(
+#       estimate = cor.test(vv, val, use = "complete.obs")$estimate %>% round(2),
+#       p.value = cor.test(vv, val, use = "complete.obs")$p.value %>% round(2)
+#     ) -> d_s
+#   
+#   ggplot(d, aes(x = {{v}}, y = val)) +
+#     geom_point(alpha = 0.5) +
+#     geom_smooth(method = "lm", se = F, color = "red") +
+#     facet_wrap(~vars, nrow = 1, scales = "free_y") +
+#     geom_label(data = d_s, aes(x = -Inf, y = Inf, label = str_c("r = ", round(estimate, 2), "\np = ", round(p.value, 2))),
+#                hjust = -0.1, vjust = 1.2, alpha = 0.7) +
+#     theme(axis.title.y = element_blank())
+#   
+# }
 
 
 func_pw2 <- function(df, v){
@@ -178,52 +216,52 @@ func_pw2 <- function(df, v){
     
 }
 
-func_pw2(df_vitd[,-(2:3)], "Lat_zone")
-#func_pw(df_vitd, Lat_zone)
+func_pw2(df_vitd_60[,-c(1:3,11)], "Lat")
 
 ```
 
 
 #### Age
 ```{r, fig.width = 10, fig.asp = 0.2}
-func_pw2(df_vitd[,-(2:3)], "Age")
+func_pw2(df_vitd_60[,-c(1:3,11)], "Age")
 ```
 
 
 #### Altitud
 ```{r, fig.width = 10, fig.asp = 0.2}
-func_pw2(df_vitd[,-(2:3)], "Altitude")
+func_pw2(df_vitd_60[,-c(1:3,11)], "Altitude")
 ```
 
 #### BMI
 ```{r, fig.width = 10, fig.asp = 0.2}
-func_pw2(df_vitd[,-(2:3)], "BMI")
+func_pw2(df_vitd_60[,-c(1:3,11)], "BMI")
 ```
 
 #### Diabetes
 ```{r, fig.width = 10, fig.asp = 0.2}
-func_pw2(df_vitd[,-(2:3)], "Diab")
+func_pw2(df_vitd_60[,-c(1:3,11)], "Diab")
 ```
 
 #### Hypertension
 ```{r, fig.width = 10, fig.asp = 0.2}
-func_pw2(df_vitd[,-(2:3)], "Hypert")
+func_pw2(df_vitd_60[,-c(1:3,11)], "Hypert")
 ```
 
 #### Sugar
 ```{r, fig.width = 10, fig.asp = 0.2}
-func_pw2(df_vitd[,-(2:3)], "Sugar")
+func_pw2(df_vitd_60[,-c(1:3,11)], "Sugar")
 ```
 
 #### Vitamin D
 ```{r, fig.width = 10, fig.asp = 0.2}
-func_pw2(df_vitd[,-(2:3)], "vitD")
+func_pw2(df_vitd_60[,-c(1:3,11)], "vitD")
 ```
 
 
 ### Multiple regression 1
 Response variable = vit D  
 Explanatory variables = bmi, lat, alt
+Only using data of women 20-49 (no BMI data for > 60)
 ```{r, include=FALSE}
 
 # df_vitd %>%
@@ -248,16 +286,17 @@ Explanatory variables = bmi, lat, alt
 
 ```{r}
 
-lm(vitD ~ BMI + Lat_zone + Altitude, data = df_vitd) %>% summary()
+lm(vitD ~ BMI + Lat + Altitude, data = df_vitd) %>% summary()
 
 ```
 
 ### Multiple regression 2
 Response variable = vit D  
 Explanatory variables = lat, alt
+Using all data (ages 20 - > 60)
 ```{r}
 
-lm(vitD ~ Lat_zone + Altitude, data = df_vitd) %>% summary()
+lm(vitD ~ Lat + Altitude, data = df_vitd_60) %>% summary()
 
 ```
 
@@ -268,12 +307,12 @@ lm(vitD ~ Lat_zone + Altitude, data = df_vitd) %>% summary()
 ```{r, include = FALSE}
 
 read_excel("data/vitd_data/Municipal database 20 to 49_MS&YG version2.xlsx",
-           skip = 1,
-           col_names = c("State", "Municip", "State_name", "Mun_name", "Deaths", 
+           skip = 1) %>% 
+  rename_with(~c("State", "Municip", "State_name", "Mun_name", "Deaths", 
                          "Pop", "Deaths_ht", "Alt", "Lat", "Ethnicity", "x")) %>% 
   select(-x) -> df_mun
 
-df_vitd %>% 
+df_vitd_60 %>% 
   group_by(State, Municip) %>% 
   summarize(
     sample_size = n(),
