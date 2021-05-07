@@ -21,7 +21,9 @@ library(tidyverse)
 library(readxl)
 library(patchwork)
 
-# Load files
+
+
+# Load altitude and lat data
 read_excel("data/vitd_data/state muncip alt and lat.xlsx") %>% 
   slice(-1) %>% 
   rename(State = 1,
@@ -29,9 +31,12 @@ read_excel("data/vitd_data/state muncip alt and lat.xlsx") %>%
          Altitude2 = 3,
          Lat = 4) -> df_latalt
   
-# Main data: younger women
+
+
+# Load 20-49 women data
 read_csv("data/vitd_data/Yan database women 2012 2018 over10 with lat and alt.csv") %>% 
   
+  # reduce diabetes to single logical col
   rowwise() %>% 
   mutate(Diab = case_when(all(is.na(c_across(Prediab:Diabet2))) ~ NA,
                           sum(c_across(Prediab:Diabet2)) == 0 ~ F,
@@ -42,15 +47,17 @@ read_csv("data/vitd_data/Yan database women 2012 2018 over10 with lat and alt.cs
   
   mutate(Hypert = as.logical(Hypert)) %>%
   
-  rename(Lat_zone = 1) -> df_vitd
+  rename(Lat_zone = 1) %>% 
 
-# Remove outlier
-df_vitd %>% filter(Age >= 20) -> df_vitd
+  # remove outlier
+  filter(Age >= 20) %>% 
+  
+  # join with altitude lat data
+  left_join(df_latalt, by = c("State", "Municip")) -> df_20_50
 
-df_vitd %>% 
-  left_join(df_latalt, by = c("State", "Municip")) -> df_vitd
 
-# older women
+
+# Load > 60 women
 read_excel("data/vitd_data/Women over 60.xlsx") %>%
   filter(SEXO == 2,
          EDAD >= 60) %>% 
@@ -66,21 +73,26 @@ read_excel("data/vitd_data/Women over 60.xlsx") %>%
   mutate(n = n()) %>%
   filter(n >= 10) %>%
   ungroup() %>%
-  select(-n) -> df_60
-
-df_60 %>% 
+  select(-n) %>% 
+  
+  # join with altitude and lat data
   left_join(df_latalt, by = c("State", "Municip")) -> df_60
+  
 
+# Join both df
 df_60 %>% 
+  
+  # add empty columns
   mutate(BMI = NA,
          Hypert = NA,
          Sugar = NA,
          Diab = NA) %>% 
-  select(names(df_vitd)) %>% 
-  bind_rows(df_vitd) -> df_vitd_60
-
-# Is altitude correlated with latitude
-# cor.test(df_vitd$Lat, df_vitd$Altitud)
+  
+  # reorder cols
+  select(names(df_20_50)) %>%
+  
+  # join
+  bind_rows(df_20_50) -> df_20_60
 
 
 ```
@@ -96,47 +108,11 @@ Between binary variables: Chi-square
 #### Latitude
 ```{r, fig.width = 10, fig.asp = 0.2}
 
-# func_pw <- function(df, v){
-#   
-#   df %>% 
-#     pivot_longer(cols = -c(State, Municip, {{v}}),
-#                  names_to = "vars",
-#                  values_to = "val") -> d
-#   
-#   d %>%
-#     rename(vv = {{v}}) %>%
-#     nest(data = (-vars)) %>%
-#     mutate(test = map(data, ~ cor.test(.x$vv, .x$val)),
-#            test = map(test, broom::tidy)) %>%
-#     unnest(cols = test) %>%
-#     select(vars, estimate, p.value) -> d_s
-#   
-#   d %>%
-#     rename(vv = {{v}}) %>% 
-#     filter(!is.na(vv) & !is.na(val)) %>% 
-#     group_by(vars) %>% 
-#     summarize(
-#       estimate = cor.test(vv, val, use = "complete.obs")$estimate %>% round(2),
-#       p.value = cor.test(vv, val, use = "complete.obs")$p.value %>% round(2)
-#     ) -> d_s
-#   
-#   ggplot(d, aes(x = {{v}}, y = val)) +
-#     geom_point(alpha = 0.5) +
-#     geom_smooth(method = "lm", se = F, color = "red") +
-#     facet_wrap(~vars, nrow = 1, scales = "free_y") +
-#     geom_label(data = d_s, aes(x = -Inf, y = Inf, label = str_c("r = ", round(estimate, 2), "\np = ", round(p.value, 2))),
-#                hjust = -0.1, vjust = 1.2, alpha = 0.7) +
-#     theme(axis.title.y = element_blank())
-#   
-# }
-
-
 func_pw2 <- function(df, v){
   
   df %>% 
     select(-c(all_of(v))) %>% 
     names() %>% 
-    # .[7] %>% # DEL
     map(function(c){
       
       # Both numeric = pearson
@@ -150,8 +126,6 @@ func_pw2 <- function(df, v){
         ggplot(df, aes(x = .data[[v]], y = .data[[c]])) +
           geom_point(alpha = 0.5) +
           geom_smooth(method = "lm", se = F, color = "red") +
-          # geom_label(data = d_s, aes(x = -Inf, y = Inf, label = str_c("r = ", round(estimate, 2), "\np = ", round(p.value, 2))),
-          #      hjust = -0.1, vjust = 1.2, alpha = 0.7)
           labs(caption = str_c("r = ", d_s$estimate, "; p = ", d_s$p.value),
                subtitle = c) +
           theme(axis.title = element_blank())
@@ -167,12 +141,24 @@ func_pw2 <- function(df, v){
           filter(!is.na(.data[[v]]), !is.na(.data[[c]])) %>%
           ggplot(aes(x = .data[[v]], y = .data[[c]])) +
           geom_boxplot() +
-          # geom_label(aes(x = -Inf, y = Inf, label = str_c("p = ", round(d_s, 2))),
-          #      hjust = -0.1, vjust = 1.2, alpha = 0.7)
           labs(caption = str_c("p = ", d_s),
                subtitle = c) +
           theme(axis.title = element_blank())
         
+        # Logical + numeric = wilcoxon
+      } else if(is.logical(df %>% pull(v)) & is.numeric(df %>% pull(c))){
+        
+        t <- wilcox.test(df %>% pull(c) ~ df %>% pull(v))
+        
+        d_s <- t$p.value %>% round(2)
+        
+        df %>% 
+          filter(!is.na(.data[[v]]), !is.na(.data[[c]])) %>%
+          ggplot(aes(x = .data[[v]], y = .data[[c]])) +
+          geom_boxplot() +
+          labs(caption = str_c("p = ", d_s),
+               subtitle = c) +
+          theme(axis.title = element_blank())
         
       # Logical + logical = chi sq
       } else if(is.logical(df %>% pull(v)) & is.logical(df %>% pull(c))){
@@ -191,112 +177,72 @@ func_pw2 <- function(df, v){
                subtitle = c) +
           theme(axis.title = element_blank())
         
-      # Logical + numeric
-      } else if(is.logical(df %>% pull(v)) & is.numeric(df %>% pull(c))){
-        
-        t <- wilcox.test(df %>% pull(c) ~ df %>% pull(v))
-        
-        d_s <- t$p.value %>% round(2)
-        
-        df %>% 
-          filter(!is.na(.data[[v]]), !is.na(.data[[c]])) %>%
-          ggplot(aes(x = .data[[v]], y = .data[[c]])) +
-          geom_boxplot() +
-          # geom_label(aes(x = -Inf, y = Inf, label = str_c("p = ", round(d_s, 2))),
-          #      hjust = -0.1, vjust = 1.2, alpha = 0.7)
-          labs(caption = str_c("p = ", d_s),
-               subtitle = c) +
-          theme(axis.title = element_blank())
-        
       }
-      
     }) %>% 
     
     wrap_plots(nrow = 1)
     
-}
+} # end of func
 
-func_pw2(df_vitd_60[,-c(1:3,11)], "Lat")
 
+func_pw2(df_20_60[,-c(1:3,11)], "Lat")
 ```
-
 
 #### Age
 ```{r, fig.width = 10, fig.asp = 0.2}
-func_pw2(df_vitd_60[,-c(1:3,11)], "Age")
+func_pw2(df_20_60[,-c(1:3,11)], "Age")
 ```
-
 
 #### Altitud
 ```{r, fig.width = 10, fig.asp = 0.2}
-func_pw2(df_vitd_60[,-c(1:3,11)], "Altitude")
+func_pw2(df_20_60[,-c(1:3,11)], "Altitude")
 ```
 
 #### BMI
 ```{r, fig.width = 10, fig.asp = 0.2}
-func_pw2(df_vitd_60[,-c(1:3,11)], "BMI")
+func_pw2(df_20_60[,-c(1:3,11)], "BMI")
 ```
 
 #### Diabetes
 ```{r, fig.width = 10, fig.asp = 0.2}
-func_pw2(df_vitd_60[,-c(1:3,11)], "Diab")
+func_pw2(df_20_60[,-c(1:3,11)], "Diab")
 ```
 
 #### Hypertension
 ```{r, fig.width = 10, fig.asp = 0.2}
-func_pw2(df_vitd_60[,-c(1:3,11)], "Hypert")
+func_pw2(df_20_60[,-c(1:3,11)], "Hypert")
 ```
 
 #### Sugar
 ```{r, fig.width = 10, fig.asp = 0.2}
-func_pw2(df_vitd_60[,-c(1:3,11)], "Sugar")
+func_pw2(df_20_60[,-c(1:3,11)], "Sugar")
 ```
 
 #### Vitamin D
 ```{r, fig.width = 10, fig.asp = 0.2}
-func_pw2(df_vitd_60[,-c(1:3,11)], "vitD")
+func_pw2(df_20_60[,-c(1:3,11)], "vitD")
 ```
 
 
 ### Multiple regression 1
 Response variable = vit D  
-Explanatory variables = bmi, lat, alt
+Explanatory variables = bmi, lat, alt  
 Only using data of women 20-49 (no BMI data for > 60)
-```{r, include=FALSE}
-
-# df_vitd %>%
-#   map_df(~sum(is.na(.x))) # count missing obs per var
-# 
-# df_vitd %>%
-#   select(BMI, Lat_zone, Altitude) %>%
-#   rowwise() %>%
-#   mutate(na = case_when(any(is.na(c_across(everything()))) ~ 0,
-#                         TRUE ~ 1)) %>%
-#   ungroup() %>%
-#   filter(na == 1) %>%
-#   select(-na)
-# 
-# d[,-1] %>%
-#   mutate(across(everything(), ~as.numeric(.x))) %>%
-#   corrr::correlate() %>%
-#   corrr::shave()
-
-
-```
-
 ```{r}
 
-lm(vitD ~ BMI + Lat + Altitude, data = df_vitd) %>% summary()
+lm(vitD ~ scale(BMI) + scale(Lat) + scale(Altitude), data = df_20_50) %>% summary()
+# lm(vitD ~ scale(BMI) + scale(Lat) + scale(Altitude), data = df_20_50) %>% faraway::vif()
 
 ```
 
 ### Multiple regression 2
 Response variable = vit D  
-Explanatory variables = lat, alt
+Explanatory variables = lat, alt  
 Using all data (ages 20 - > 60)
 ```{r}
 
-lm(vitD ~ Lat + Altitude, data = df_vitd_60) %>% summary()
+lm(vitD ~ scale(Lat) + scale(Altitude), data = df_20_60) %>% summary()
+# lm(vitD ~ scale(Lat) + scale(Altitude), data = df_20_60) %>% faraway::vif()
 
 ```
 
@@ -304,15 +250,16 @@ lm(vitD ~ Lat + Altitude, data = df_vitd_60) %>% summary()
 
 
 ## Municipal-scale analysis
+Using only women 20-49 dataset 
 ```{r, include = FALSE}
 
 read_excel("data/vitd_data/Municipal database 20 to 49_MS&YG version2.xlsx",
            skip = 1) %>% 
   rename_with(~c("State", "Municip", "State_name", "Mun_name", "Deaths", 
-                         "Pop", "Deaths_ht", "Alt", "Lat", "Ethnicity", "x")) %>% 
+                 "Pop", "Deaths_ht", "Alt", "Lat", "Ethnicity", "x")) %>% 
   select(-x) -> df_mun
 
-df_vitd_60 %>% 
+df_20_50 %>% 
   group_by(State, Municip) %>% 
   summarize(
     sample_size = n(),
@@ -368,35 +315,95 @@ func_pw2(df_mun[,-c(1:6,11)], "nmol_50")
 func_pw2(df_mun[,-c(1:6,11)], "nmol_75")
 ```
 
-## Multivariate regression 1
-Response variable = mean Vit D  
-Explanatory variables = Deaths per 100,000, Altitude, Latitude, & Ethnicity
+
+
+
+## Multivariate regression 0
+
+Response variable = vit D  
+Explanatory variables = Altitude and Latitude
+
+#### Unscaled variables
+The coefficient value (column "Estimate") represents the mean change of deaths/ht given a one-unit shift in the independent variable    
+
 ```{r}
-
-# df_mun[,7:10] %>%
-#   corrr::correlate() %>%
-#   corrr::shave()
-
-lm(mean_vitD ~ Deaths_ht + Alt + Lat + Ethnicity, data = df_mun) %>% summary()
-
+lm(mean_vitD ~ Alt + Lat, data = df_mun) %>% summary()
 ```
-Explanatory variables, together, explain 30% of the variance in Vit D at municipal scale. When controlling for other variables, each variable shows a negative relation with vit D, but only deaths per 100,000, altitude, and latitude are significant. If ethnicity is removed from the model, results are almost the same in terms of coefficients, their signs, and R2.
 
-## Multivariate regression 2
+#### Scaled variables  
+The coefficient value (column "Estimate") represents the mean change of deaths/ht given a one-std-deviation shift in the independent variable (indicates which variable has a bigger effect on deaths/ht).
+```{r}
+lm(mean_vitD ~ scale(Alt) + scale(Lat), data = df_mun) %>% summary()
+```
+
+#### Variance Inflation factor
+Confirms collinearity in the model. VIF = 1 is best. VIF > 5 means problematic variable (correlated with other(s))
+```{r}
+lm(mean_vitD ~ Alt + Lat, data = df_mun) %>% faraway::vif() %>% round(2)
+```
+
+
+
+## Multivariate regression 1
+
 Response variable = Deaths per 100,000  
 Explanatory variables = Altitude and Latitude
+
+#### Unscaled variables
 ```{r}
-
 lm(Deaths_ht ~ Alt + Lat, data = df_mun) %>% summary()
-
 ```
 
-## Multivariate regression 3
+#### Scaled variables  
+```{r}
+lm(Deaths_ht ~ scale(Alt) + scale(Lat), data = df_mun) %>% summary()
+```
+
+#### Variance Inflation factor
+```{r}
+lm(Deaths_ht ~ Alt + Lat, data = df_mun) %>% faraway::vif() %>% round(2)
+```
+
+
+
+## Multivariate regression 2
+
 Response variable = Deaths per 100,000  
 Explanatory variables = Altitude, Latitude, nmol < 30
+
+#### Unscaled variables
 ```{r}
-
 lm(Deaths_ht ~ Alt + Lat + nmol_30, data = df_mun) %>% summary()
-
 ```
 
+#### Scaled variables
+```{r}
+lm(Deaths_ht ~ scale(Alt) + scale(Lat) + scale(nmol_30), data = df_mun) %>% summary()
+```
+
+#### Variance Inflation factor
+```{r}
+lm(Deaths_ht ~ Alt + Lat + nmol_30, data = df_mun) %>% faraway::vif() %>% round(2)
+```
+
+
+
+## Multivariate regression 3
+
+Response variable = Deaths per 100,000  
+Explanatory variables = Altitude, Latitude, nmol < 30, ethnicity
+
+#### Unscaled variables
+```{r}
+lm(Deaths_ht ~ Alt + Lat + nmol_30 + Ethnicity, data = df_mun) %>% summary()
+```
+
+#### Scaled variables
+```{r}
+lm(Deaths_ht ~ scale(Alt) + scale(Lat) + scale(nmol_30) + scale(Ethnicity), data = df_mun) %>% summary()
+```
+
+#### Variance Inflation factor
+```{r}
+lm(Deaths_ht ~ Alt + Lat + nmol_30 + Ethnicity, data = df_mun) %>% faraway::vif() %>% round(2)
+```
