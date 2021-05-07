@@ -318,7 +318,7 @@ func_pw2(df_mun[,-c(1:6,11)], "nmol_75")
 
 
 
-## Multivariate regression 0
+### Multivariate regression 0
 
 Response variable = vit D  
 Explanatory variables = Altitude and Latitude
@@ -344,7 +344,7 @@ lm(mean_vitD ~ Alt + Lat, data = df_mun) %>% faraway::vif() %>% round(2)
 
 
 
-## Multivariate regression 1
+### Multivariate regression 1
 
 Response variable = Deaths per 100,000  
 Explanatory variables = Altitude and Latitude
@@ -366,7 +366,7 @@ lm(Deaths_ht ~ Alt + Lat, data = df_mun) %>% faraway::vif() %>% round(2)
 
 
 
-## Multivariate regression 2
+### Multivariate regression 2
 
 Response variable = Deaths per 100,000  
 Explanatory variables = Altitude, Latitude, nmol < 30
@@ -388,7 +388,7 @@ lm(Deaths_ht ~ Alt + Lat + nmol_30, data = df_mun) %>% faraway::vif() %>% round(
 
 
 
-## Multivariate regression 3
+### Multivariate regression 3
 
 Response variable = Deaths per 100,000  
 Explanatory variables = Altitude, Latitude, nmol < 30, ethnicity
@@ -407,3 +407,48 @@ lm(Deaths_ht ~ scale(Alt) + scale(Lat) + scale(nmol_30) + scale(Ethnicity), data
 ```{r}
 lm(Deaths_ht ~ Alt + Lat + nmol_30 + Ethnicity, data = df_mun) %>% faraway::vif() %>% round(2)
 ```
+
+
+## Municipal-scale analysis
+### Multivariate regression
+Using only women > 60 dataset  
+Response variable = Deaths per 100,000  
+Explanatory variables = Altitude, Latitude
+
+#### Unscaled variables
+```{r}
+
+read_excel("data/vitd_data/Deaths women over 60 municipal.xlsx",
+           skip = 1) %>%
+  select(1,2,9) %>% 
+  rename_with(~c("State", "Municip", "Deaths_ht")) -> df_mun_60
+
+df_60 %>% 
+  group_by(State, Municip) %>% 
+  summarize(
+    sample_size = n(),
+    mean_vitD = mean(vitD),
+    nmol_30 = sum(vitD < 30)/n(),
+    nmol_50 = sum(vitD < 50)/n(),
+    nmol_75 = sum(vitD < 75)/n(),
+    
+    Alt = max(Altitude),
+    Lat = max(Lat)
+  ) %>% 
+  
+  {right_join(df_mun_60, ., by = c("State", "Municip"))} -> df_mun_60
+
+
+lm(Deaths_ht ~ Alt + Lat, data = df_mun_60) %>% summary()
+```
+
+#### Scaled variables
+```{r}
+lm(Deaths_ht ~ scale(Alt) + scale(Lat), data = df_mun_60) %>% summary()
+```
+
+#### How are Deaths/ht related to other individual variables?
+```{r, fig.width = 10, fig.asp = 0.2}
+func_pw2(df_mun_60[,c(3,5,9,10)], "Deaths_ht")
+```
+
