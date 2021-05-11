@@ -103,7 +103,9 @@ df_60 %>%
 ### Pair-wise correlations
 Between continuous variables: Pearson  
 Between a binary and a continuous variable: Mann-Whitney  
-Between binary variables: Chi-square  
+Between binary variables: Chi-square
+
+#### Women 20-49:
 
 #### Latitude
 ```{r, fig.width = 10, fig.asp = 0.2}
@@ -185,43 +187,67 @@ func_pw2 <- function(df, v){
 } # end of func
 
 
-func_pw2(df_20_60[,-c(1:3,11)], "Lat")
+func_pw2(df_20_50[,-c(1:3,11)], "Lat")
 ```
 
 #### Age
 ```{r, fig.width = 10, fig.asp = 0.2}
-func_pw2(df_20_60[,-c(1:3,11)], "Age")
+func_pw2(df_20_50[,-c(1:3,11)], "Age")
 ```
 
 #### Altitud
 ```{r, fig.width = 10, fig.asp = 0.2}
-func_pw2(df_20_60[,-c(1:3,11)], "Altitude")
+func_pw2(df_20_50[,-c(1:3,11)], "Altitude")
 ```
 
 #### BMI
 ```{r, fig.width = 10, fig.asp = 0.2}
-func_pw2(df_20_60[,-c(1:3,11)], "BMI")
+func_pw2(df_20_50[,-c(1:3,11)], "BMI")
 ```
 
 #### Diabetes
 ```{r, fig.width = 10, fig.asp = 0.2}
-func_pw2(df_20_60[,-c(1:3,11)], "Diab")
+func_pw2(df_20_50[,-c(1:3,11)], "Diab")
 ```
 
 #### Hypertension
 ```{r, fig.width = 10, fig.asp = 0.2}
-func_pw2(df_20_60[,-c(1:3,11)], "Hypert")
+func_pw2(df_20_50[,-c(1:3,11)], "Hypert")
 ```
 
 #### Sugar
 ```{r, fig.width = 10, fig.asp = 0.2}
-func_pw2(df_20_60[,-c(1:3,11)], "Sugar")
+func_pw2(df_20_50[,-c(1:3,11)], "Sugar")
 ```
 
 #### Vitamin D
 ```{r, fig.width = 10, fig.asp = 0.2}
-func_pw2(df_20_60[,-c(1:3,11)], "vitD")
+func_pw2(df_20_50[,-c(1:3,11)], "vitD")
 ```
+
+
+#### Women > 60:
+
+#### Age
+```{r, fig.width = 10, fig.asp = 0.2}
+func_pw2(df_60[,-c(2:4,7)],"Age")
+```
+
+#### Altitude
+```{r, fig.width = 10, fig.asp = 0.2}
+func_pw2(df_60[,-c(2:4,7)],"Altitude")
+```
+
+#### Latitude
+```{r, fig.width = 10, fig.asp = 0.2}
+func_pw2(df_60[,-c(2:4,7)],"Lat")
+```
+
+#### VitD
+```{r, fig.width = 10, fig.asp = 0.2}
+func_pw2(df_60[,-c(2:4,7)],"vitD")
+```
+
 
 
 ### Multiple regression 1
@@ -410,13 +436,11 @@ lm(Deaths_ht ~ Alt + Lat + nmol_30 + Ethnicity, data = df_mun) %>% faraway::vif(
 
 
 ## Municipal-scale analysis
-### Multivariate regression
-Using only women > 60 dataset  
-Response variable = Deaths per 100,000  
-Explanatory variables = Altitude, Latitude
+Using only women > 60 dataset
 
-#### Unscaled variables
-```{r}
+### Pairwise correlations
+#### Ethnicity
+```{r, fig.width = 10, fig.asp = 0.2}
 
 read_excel("data/vitd_data/Deaths women over 60 municipal.xlsx",
            skip = 1) %>%
@@ -438,7 +462,56 @@ df_60 %>%
   
   {right_join(df_mun_60, ., by = c("State", "Municip"))} -> df_mun_60
 
+df_mun %>%
+  select(State, Ethnicity) %>% 
+  {unique(.)} %>% 
+  right_join(df_mun_60, by = "State") -> df_mun_60
 
+func_pw2(df_mun_60[,-c(1,3,5)], "Ethnicity")
+```
+
+#### Deaths/100,000
+```{r, fig.width = 10, fig.asp = 0.2}
+func_pw2(df_mun_60[,-c(1,3,5)], "Deaths_ht")
+```
+
+#### Vit D
+```{r, fig.width = 10, fig.asp = 0.2}
+func_pw2(df_mun_60[,-c(1,3,5)], "mean_vitD")
+```
+
+#### nmol < 30
+```{r, fig.width = 10, fig.asp = 0.2}
+func_pw2(df_mun_60[,-c(1,3,5)], "nmol_30")
+```
+
+#### nmol < 50
+```{r, fig.width = 10, fig.asp = 0.2}
+func_pw2(df_mun_60[,-c(1,3,5)], "nmol_50")
+```
+
+#### nmol < 75
+```{r, fig.width = 10, fig.asp = 0.2}
+func_pw2(df_mun_60[,-c(1,3,5)], "nmol_75")
+```
+
+#### Altitude
+```{r, fig.width = 10, fig.asp = 0.2}
+func_pw2(df_mun_60[,-c(1,3,5)], "Alt")
+```
+
+#### Latitude
+```{r, fig.width = 10, fig.asp = 0.2}
+func_pw2(df_mun_60[,-c(1,3,5)], "Lat")
+```
+
+
+### Multivariate regression
+Response variable = Deaths per 100,000  
+Explanatory variables = Altitude, Latitude
+
+#### Unscaled variables
+```{r}
 lm(Deaths_ht ~ Alt + Lat, data = df_mun_60) %>% summary()
 ```
 
@@ -446,9 +519,3 @@ lm(Deaths_ht ~ Alt + Lat, data = df_mun_60) %>% summary()
 ```{r}
 lm(Deaths_ht ~ scale(Alt) + scale(Lat), data = df_mun_60) %>% summary()
 ```
-
-#### How are Deaths/ht related to other individual variables?
-```{r, fig.width = 10, fig.asp = 0.2}
-func_pw2(df_mun_60[,c(3,5,9,10)], "Deaths_ht")
-```
-
