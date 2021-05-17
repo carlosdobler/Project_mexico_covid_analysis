@@ -1,5 +1,5 @@
 ---
-title: "Vitamin D Analysis 2"
+title: "Vitamin D Analysis 2.1"
 author: "Carlos Dobler"
 date: "`r paste('Last update:', format(Sys.time(), '%B %d %Y (%H:%M)'))`"
 output: html_document
@@ -20,8 +20,6 @@ knitr::opts_chunk$set(echo = FALSE,
 library(tidyverse)
 library(readxl)
 library(patchwork)
-
-
 
 # Load altitude and lat data
 read_excel("data/vitd_data/state muncip alt and lat.xlsx") %>% 
