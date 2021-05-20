@@ -107,9 +107,10 @@ Women 20-49
 ```{r}
 
 lm(vitD ~ scale(Lat) + scale(Altitude), data = df_20_50) %>% summary()
-# lm(vitD ~ scale(Lat) + scale(Altitude), data = df_20_50) %>% faraway::vif()
+lm(vitD ~ scale(Lat) + scale(Altitude), data = df_20_50) %>% faraway::vif()
 
 ```
+
 
 2.  
 Response variable = vit D  
@@ -124,11 +125,12 @@ lm(vitD ~ scale(Lat) + scale(Altitude), data = df_60) %>% summary()
 
 3.  
 Response variable = vit D  
-Explanatory variables = lat, alt, bmi  
+Explanatory variables = lat, alt, age  
 Women 20-49  
 ```{r}
 
-lm(vitD ~ scale(Lat) + scale(Altitude) + scale(BMI), data = df_20_50) %>% summary()
+lm(vitD ~ scale(Lat) + scale(Altitude) + scale(Age), data = df_20_50) %>% summary()
+lm(vitD ~ scale(Lat) + scale(Altitude) + scale(Age), data = df_20_50) %>% faraway::vif()
 
 ```
 
@@ -139,6 +141,17 @@ Women > 60
 ```{r}
 
 lm(vitD ~ scale(Lat) + scale(Altitude) + scale(Age), data = df_60) %>% summary()
+
+```
+
+3.  
+Response variable = vit D  
+Explanatory variables = lat, alt, age  
+Women 20-49  
+```{r}
+
+lm(vitD ~ scale(Lat) + scale(Altitude) + scale(Age) + scale(BMI), data = df_20_50) %>% summary()
+lm(vitD ~ scale(Lat) + scale(Altitude) + scale(Age) + scale(BMI), data = df_20_50) %>% faraway::vif()
 
 ```
 

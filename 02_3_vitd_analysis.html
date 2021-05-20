@@ -179,7 +179,7 @@ summary {
 
 <h1 class="title toc-ignore">Vitamin D Analysis 2.2</h1>
 <h4 class="author">Carlos Dobler</h4>
-<h4 class="date">Last update: May 17 2021 (10:06)</h4>
+<h4 class="date">Last update: May 20 2021 (08:45)</h4>
 
 </div>
 
@@ -214,6 +214,8 @@ Women 20-49</li>
 ## Residual standard error: 17.29 on 3135 degrees of freedom
 ## Multiple R-squared:  0.1091, Adjusted R-squared:  0.1085 
 ## F-statistic: 191.9 on 2 and 3135 DF,  p-value: &lt; 2.2e-16</code></pre>
+<pre><code>##      scale(Lat) scale(Altitude) 
+##        1.036999        1.036999</code></pre>
 <ol start="2" style="list-style-type: decimal">
 <li>Response variable = vit D<br />
 Explanatory variables = lat, alt<br />
@@ -240,31 +242,32 @@ Women &gt; 60</li>
 ## F-statistic: 7.728 on 2 and 89 DF,  p-value: 0.0008039</code></pre>
 <ol start="3" style="list-style-type: decimal">
 <li>Response variable = vit D<br />
-Explanatory variables = lat, alt, bmi<br />
+Explanatory variables = lat, alt, age<br />
 Women 20-49</li>
 </ol>
 <pre><code>## 
 ## Call:
-## lm(formula = vitD ~ scale(Lat) + scale(Altitude) + scale(BMI), 
+## lm(formula = vitD ~ scale(Lat) + scale(Altitude) + scale(Age), 
 ##     data = df_20_50)
 ## 
 ## Residuals:
-##     Min      1Q  Median      3Q     Max 
-## -49.186 -11.162  -1.078   9.929  78.566 
+##    Min     1Q Median     3Q    Max 
+## -55.90 -11.81  -1.15  10.30  80.06 
 ## 
 ## Coefficients:
 ##                 Estimate Std. Error t value Pr(&gt;|t|)    
-## (Intercept)      61.1982     0.3383 180.921   &lt;2e-16 ***
-## scale(Lat)       -3.8711     0.3432 -11.279   &lt;2e-16 ***
-## scale(Altitude)  -5.6014     0.3474 -16.124   &lt;2e-16 ***
-## scale(BMI)       -2.9808     0.3408  -8.746   &lt;2e-16 ***
+## (Intercept)      61.6295     0.3070 200.762  &lt; 2e-16 ***
+## scale(Lat)       -3.8849     0.3127 -12.424  &lt; 2e-16 ***
+## scale(Altitude)  -5.3828     0.3127 -17.215  &lt; 2e-16 ***
+## scale(Age)       -1.7910     0.3071  -5.832 6.02e-09 ***
 ## ---
 ## Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
 ## 
-## Residual standard error: 16.56 on 2393 degrees of freedom
-##   (741 observations deleted due to missingness)
-## Multiple R-squared:  0.1371, Adjusted R-squared:  0.136 
-## F-statistic: 126.7 on 3 and 2393 DF,  p-value: &lt; 2.2e-16</code></pre>
+## Residual standard error: 17.2 on 3134 degrees of freedom
+## Multiple R-squared:  0.1186, Adjusted R-squared:  0.1178 
+## F-statistic: 140.6 on 3 and 3134 DF,  p-value: &lt; 2.2e-16</code></pre>
+<pre><code>##      scale(Lat) scale(Altitude)      scale(Age) 
+##        1.037168        1.037241        1.000334</code></pre>
 <ol start="4" style="list-style-type: decimal">
 <li>Response variable = vit D<br />
 Explanatory variables = lat, alt, age<br />
@@ -291,6 +294,36 @@ Women &gt; 60</li>
 ## Residual standard error: 22.01 on 88 degrees of freedom
 ## Multiple R-squared:  0.1614, Adjusted R-squared:  0.1328 
 ## F-statistic: 5.646 on 3 and 88 DF,  p-value: 0.001384</code></pre>
+<ol start="3" style="list-style-type: decimal">
+<li>Response variable = vit D<br />
+Explanatory variables = lat, alt, age<br />
+Women 20-49</li>
+</ol>
+<pre><code>## 
+## Call:
+## lm(formula = vitD ~ scale(Lat) + scale(Altitude) + scale(Age) + 
+##     scale(BMI), data = df_20_50)
+## 
+## Residuals:
+##     Min      1Q  Median      3Q     Max 
+## -48.841 -11.432  -0.872  10.096  77.412 
+## 
+## Coefficients:
+##                 Estimate Std. Error t value Pr(&gt;|t|)    
+## (Intercept)      61.1902     0.3372 181.448  &lt; 2e-16 ***
+## scale(Lat)       -3.8423     0.3422 -11.227  &lt; 2e-16 ***
+## scale(Altitude)  -5.5425     0.3467 -15.988  &lt; 2e-16 ***
+## scale(Age)       -1.3797     0.3484  -3.960 7.72e-05 ***
+## scale(BMI)       -2.6247     0.3515  -7.467 1.14e-13 ***
+## ---
+## Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
+## 
+## Residual standard error: 16.5 on 2392 degrees of freedom
+##   (741 observations deleted due to missingness)
+## Multiple R-squared:  0.1427, Adjusted R-squared:  0.1413 
+## F-statistic: 99.56 on 4 and 2392 DF,  p-value: &lt; 2.2e-16</code></pre>
+<pre><code>##      scale(Lat) scale(Altitude)      scale(Age)      scale(BMI) 
+##        1.041242        1.057508        1.070663        1.086699</code></pre>
 </div>
 </div>
 </div>
